@@ -1,0 +1,54 @@
+name: 'Terraform CI/CD'
+
+on:
+  push:
+    branches:
+      - main  # Set to your default branch
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: dev
+
+
+    steps:
+    - name: 'Checkout'
+      uses: actions/checkout@v2
+
+    - name: 'Configure AWS Credentials'
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: 'ap-southeast-2'  # Update to your AWS region
+
+    - name: 'Set up Terraform'
+      uses: hashicorp/setup-terraform@v1
+    - name: list files
+      run: |
+        echo "Listing files in $(pwd):"
+        ls
+
+    - name: 'Package Lambda Function'
+      run: |
+        zip -j lambda/lambda_function.zip lambda/index.py 
+    - name: 'Terraform Init'
+      run: terraform init
+
+    - name: 'Terraform Format'
+      run: terraform fmt -check
+
+    - name: 'Terraform Validate'
+      run: terraform validate
+
+    - name: 'Terraform Plan'
+      if: github.event_name == 'pull_request'
+      run: terraform plan
+
+    - name: 'Terraform Apply'
+      if: github.ref == 'refs/heads/main'
+      run: terraform apply -auto-approve
